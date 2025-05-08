@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code LiveShare Quick Access</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            padding: 2rem;
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #0078d7;
+            margin-bottom: 1rem;
+        }
+        .section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background-color: #3c3c3c;
+            border-radius: 8px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #0078d7;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            margin: 0.5rem;
+        }
+        .button:hover {
+            background-color: #0062ad;
+        }
+        .button.green {
+            background-color: #107c10;
+        }
+        .button.green:hover {
+            background-color: #0b5a0b;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0 1rem;
+            background-color: #252525;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            font-size: 1rem;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            background-color: #107c10;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .visible {
+            opacity: 1;
+        }
+        .time {
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VS Code LiveShare Quick Access</h1>
+        
+        <div class="section">
+            <h2>Current Live Session</h2>
+            <div id="current-link-display">No active session available</div>
+            <div id="update-time" class="time"></div>
+            <div>
+                <a id="join-button" href="#" class="button" target="_blank" style="display: none;">Join Session</a>
+                <button id="copy-button" class="button" style="display: none;">Copy Link</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Update Session Link</h2>
+            <p>Paste your new VS Code LiveShare link:</p>
+            <input 
+                type="text" 
+                id="new-link-input" 
+                placeholder="https://prod.liveshare.vsengsaas.visualstudio.com/join?..."
+                autocomplete="off"
+            >
+            <button id="update-button" class="button green">Update Session Link</button>
+        </div>
+        
+        <div class="section">
+            <h2>Quick Instructions</h2>
+            <ol style="text-align: left;">
+                <li>Start a LiveShare session in VS Code</li>
+                <li>Click "Copy Invite Link" in VS Code</li>
+                <li>Paste the link above and click "Update"</li>
+                <li>Share this page's URL with your team</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification">Link updated successfully!</div>
+    
+    <script>
+        // Get DOM elements
+        const currentLinkDisplay = document.getElementById('current-link-display');
+        const updateTimeDisplay = document.getElementById('update-time');
+        const joinButton = document.getElementById('join-button');
+        const copyButton = document.getElementById('copy-button');
+        const newLinkInput = document.getElementById('new-link-input');
+        const updateButton = document.getElementById('update-button');
+        const notification = document.getElementById('notification');
+        
+        // Load saved link
+        function loadSavedLink() {
+            const linkData = localStorage.getItem('vscodeLiveShareData');
+            
+            if (linkData) {
+                const { link, timestamp } = JSON.parse(linkData);
+                
+                // Display the link (shortened for display)
+                if (link.length > 60) {
+                    currentLinkDisplay.textContent = link.substring(0, 60) + '...';
+                } else {
+                    currentLinkDisplay.textContent = link;
+                }
+                
+                // Set the join button
+                joinButton.href = link;
+                joinButton.style.display = 'inline-block';
+                
+                // Show copy button
+                copyButton.style.display = 'inline-block';
+                
+                // Update timestamp
+                const date = new Date(timestamp);
+                updateTimeDisplay.textContent = `Last updated: ${date.toLocaleString()}`;
+            } else {
+                currentLinkDisplay.textContent = 'No active session available';
+                joinButton.style.display = 'none';
+                copyButton.style.display = 'none';
+                updateTimeDisplay.textContent = '';
+            }
+        }
+        
+        // Update the link
+        function updateLink() {
+            const newLink = newLinkInput.value.trim();
+            
+            if (!newLink) {
+                alert('Please enter a LiveShare link');
+                return;
+            }
+            
+            if (!newLink.includes('liveshare.vsengsaas.visualstudio.com')) {
+                alert('This doesn\'t appear to be a valid LiveShare link');
+                return;
+            }
+            
+            // Save to localStorage with timestamp
+            const linkData = {
+                link: newLink,
+                timestamp: new Date().toISOString()
+            };
+            
+            localStorage.setItem('vscodeLiveShareData', JSON.stringify(linkData));
+            
+            // Update UI
+            loadSavedLink();
+            
+            // Clear input
+            newLinkInput.value = '';
+            
+            // Show notification
+            notification.classList.add('visible');
+            setTimeout(() => {
+                notification.classList.remove('visible');
+            }, 3000);
+        }
+        
+        // Copy link to clipboard
+        function copyLinkToClipboard() {
+            const linkData = localStorage.getItem('vscodeLiveShareData');
+            
+            if (linkData) {
+                const { link } = JSON.parse(linkData);
+                navigator.clipboard.writeText(link)
+                    .then(() => {
+                        notification.textContent = 'Link copied to clipboard!';
+                        notification.classList.add('visible');
+                        setTimeout(() => {
+                            notification.classList.remove('visible');
+                        }, 3000);
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        alert('Failed to copy link to clipboard');
+                    });
+            }
+        }
+        
+        // Event listeners
+        updateButton.addEventListener('click', updateLink);
+        copyButton.addEventListener('click', copyLinkToClipboard);
+        
+        // For quick updating - detect Ctrl+V when focusing the input
+        newLinkInput.addEventListener('paste', (event) => {
+            // Wait for the paste to complete
+            setTimeout(() => {
+                if (newLinkInput.value.includes('liveshare.vsengsaas.visualstudio.com')) {
+                    updateLink();
+                }
+            }, 100);
+        });
+        
+        // Load saved link on page load
+        loadSavedLink();
+
+        // Auto-focus the input field for quick pasting
+        window.addEventListener('load', () => {
+            newLinkInput.focus();
+        });
+    </script>
+</body>
+</html>
